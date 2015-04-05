@@ -58,7 +58,7 @@ module Twittersphere
 
       # Recursion
       if current_depth + 1 < @max_depth
-        user.friends.each do |follower_id|
+        user.friends.sample(@max_friends).each do |follower_id|
           closed_list = get_friend_network(follower_id, current_depth + 1, closed_list)
         end
       end
@@ -90,7 +90,7 @@ module Twittersphere
       begin
         # Saves only a random sample of 200 friend IDs max
         # This saves space and runtime, though this might be the wrong way to do it
-        user.friends = client.friend_ids(user.user_id).to_a.sample(@max_friends)
+        user.friends = client.friend_ids(user.user_id).to_a
       rescue Twitter::Error::Unauthorized => error
         puts "Private, moving on"
         return false
@@ -109,6 +109,8 @@ module Twittersphere
       puts "Hitting the API (users for #{fetch_ids.inspect})"
 
       fetch_ids.each_slice(100) do |*ids_batch|
+        next unless ids_batch.size > 0
+
         begin
           client.users(ids_batch).each do |user|
             @user_store[user.id] = UserWrapper.new(user)

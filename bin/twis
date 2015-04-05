@@ -9,37 +9,32 @@ Dotenv.load
 require_relative '../lib/twittersphere'
 
 class App < Thor
+  class_option :max_depth, aliases: "-d", desc: "Max depth of search", default: 2, type: :numeric
+  class_option :max_friends, aliases: "-f", desc: "Max friends of friends stored", default: 300, type: :numeric
+
   desc "fetch USERNAME", "fetch users and followers from Twitter"
 
-  method_option :max_depth, aliases: "-d", desc: "Max depth of search", default: 1
-  method_option :max_friends, aliases: "-f", desc: "Max friends of friends stored", default: 100
-
   def fetch(name)
-    ts = Twittersphere::Client.new(name, options[:max_depth].to_i, options[:max_friends].to_i)
-    ts.run
+    client(name, options).run
   end
 
   desc "inspect", "display user store"
 
   def inspect
-    ts = Twittersphere::Client.new(nil, nil, nil)
-    p ts.user_store
+    p client(nil, options).user_store
   end
 
   desc "process USERNAME", "generate graph edges from data"
 
-  method_option :max_depth, aliases: "-d", desc: "Max depth of search", default: 1
-  method_option :max_friends, aliases: "-f", desc: "Max friends of friends stored", default: 100
-
   def process(name)
-    tp    = Twittersphere::Processor.new(Twittersphere::Client.new(name, options[:max_depth].to_i, options[:max_friends].to_i))
+    tp    = Twittersphere::Processor.new(client(name, options))
     edges = tp.run
 
     str  = "nodedef> name VARCHAR, label VARCHAR, followers INT\n"
     done = {}
 
     edges.each do |edge|
-      edge.take(2).each do |node|
+      edge.each do |node|
         next if done.has_key? node.user_id
         str << "#{node.user_id},#{node.name},#{node.weight}\n"
         done[node.user_id] = true
@@ -53,6 +48,12 @@ class App < Thor
     end
 
     File.open('./output.gdf', 'w') { |f| f.print str }
+  end
+
+  private
+
+  def client(name, options)
+    Twittersphere::Client.new(name, options[:max_depth], options[:max_friends])
   end
 end
 

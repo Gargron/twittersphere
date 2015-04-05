@@ -19,12 +19,18 @@ module Twittersphere
 
       user = @user_store[id]
 
-      return edges if user.friends.nil?
+      # Skip edges from users who don't follow anyone or have less than 10 followers themselves
+      return edges if user.friends.nil? || user.weight < 10
 
       user.friends.each do |follower_id|
         next unless @user_store.has_key? follower_id
 
-        edges << [user, @user_store[follower_id], user.weight]
+        following = @user_store[follower_id]
+
+        # Skip edges to users with 10k users and more, we don't need the famous people
+        next if following.weight > 9999
+
+        edges << [user, following]
 
         if depth + 1 < max_depth
           process_follower_list(follower_id, edges, depth + 1, max_depth)
