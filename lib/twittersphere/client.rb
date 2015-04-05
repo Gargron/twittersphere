@@ -44,6 +44,11 @@ module Twittersphere
 
       puts "Looking at #{user.name} (depth: #{current_depth})"
 
+      # If a user follows a crazy number of people, we're having none of that
+      if !user.friends_count.nil? && user.friends_count > @max_friends * 5
+        return closed_list
+      end
+
       # Get friend IDs of the user
       if user.friends.nil?
         return closed_list unless fetch_friends(user)
@@ -58,7 +63,8 @@ module Twittersphere
 
       # Recursion
       if current_depth + 1 < @max_depth
-        user.friends.sample(@max_friends).each do |follower_id|
+        user.friends.sample(@max_friends).each_with_index do |follower_id, i|
+          puts "Progress for #{user.name} (depth: #{current_depth}): #{i}/#{user.friends_count||0}"
           closed_list = get_friend_network(follower_id, current_depth + 1, closed_list)
         end
       end
@@ -106,10 +112,11 @@ module Twittersphere
     # Fetch a bunch of user profiles at the same time, retry if rate limited
     def fetch_user_batched(ids)
       fetch_ids = ids.reject { |id| @user_store.has_key? id }
-      puts "Hitting the API (users for #{fetch_ids.inspect})"
 
-      fetch_ids.each_slice(100) do |*ids_batch|
+      fetch_ids.each_slice(100) do |ids_batch|
         next unless ids_batch.size > 0
+
+        puts "Hitting the API (users for #{ids_batch.inspect})"
 
         begin
           client.users(ids_batch).each do |user|

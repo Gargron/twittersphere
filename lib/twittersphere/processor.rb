@@ -30,7 +30,7 @@ module Twittersphere
         # Skip edges to users with 10k users and more, we don't need the famous people
         next if following.weight > 9999
 
-        edges << [user, following]
+        edges << [user, following, user.weight]
 
         if depth + 1 < max_depth
           process_follower_list(follower_id, edges, depth + 1, max_depth)

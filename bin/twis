@@ -30,13 +30,13 @@ class App < Thor
     tp    = Twittersphere::Processor.new(client(name, options))
     edges = tp.run
 
-    str  = "nodedef> name VARCHAR, label VARCHAR, followers INT\n"
+    str  = "nodedef> name VARCHAR, label VARCHAR, followers INT, following INT\n"
     done = {}
 
     edges.each do |edge|
       edge.each do |node|
         next if done.has_key? node.user_id
-        str << "#{node.user_id},#{node.name},#{node.weight}\n"
+        str << "#{node.user_id},#{node.name},#{node.weight},#{node.friends_count}\n"
         done[node.user_id] = true
       end
     end
