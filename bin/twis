@@ -1,0 +1,59 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'bundler/setup'
+require 'thor'
+require 'dotenv'
+
+Dotenv.load
+
+require_relative '../lib/twittersphere'
+
+class App < Thor
+  desc "fetch USERNAME", "fetch users and followers from Twitter"
+
+  method_option :max_depth, aliases: "-d", desc: "Max depth of search", default: 1
+  method_option :max_friends, aliases: "-f", desc: "Max friends of friends stored", default: 100
+
+  def fetch(name)
+    ts = Twittersphere::Client.new(name, options[:max_depth].to_i, options[:max_friends].to_i)
+    ts.run
+  end
+
+  desc "inspect", "display user store"
+
+  def inspect
+    ts = Twittersphere::Client.new(nil, nil, nil)
+    p ts.user_store
+  end
+
+  desc "process USERNAME", "generate graph edges from data"
+
+  method_option :max_depth, aliases: "-d", desc: "Max depth of search", default: 1
+  method_option :max_friends, aliases: "-f", desc: "Max friends of friends stored", default: 100
+
+  def process(name)
+    tp    = Twittersphere::Processor.new(Twittersphere::Client.new(name, options[:max_depth].to_i, options[:max_friends].to_i))
+    edges = tp.run
+
+    str  = "nodedef> name VARCHAR, label VARCHAR, followers INT\n"
+    done = {}
+
+    edges.each do |edge|
+      edge.take(2).each do |node|
+        next if done.has_key? node.user_id
+        str << "#{node.user_id},#{node.name},#{node.weight}\n"
+        done[node.user_id] = true
+      end
+    end
+
+    str << "edgedef> user VARCHAR, friend VARCHAR\n"
+
+    edges.each do |edge|
+      str << "#{edge[0].user_id},#{edge[1].user_id}\n"
+    end
+
+    File.open('./output.gdf', 'w') { |f| f.print str }
+  end
+end
+
+App.start(ARGV)
